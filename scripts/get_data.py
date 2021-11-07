@@ -16,7 +16,10 @@ def string_to_int(string):
     """
     Find and return the number in the string of
     """
-    return int(re.findall("\d+", string))
+    try:
+        return int(re.findall("\d+", string)[0])
+    except IndexError:
+        return None
 
 def clean(string):
     """
@@ -31,14 +34,18 @@ def get_ratings(string, soup):
     """
     Find and return the ratings and the explanations
     """
-    soup = soup 
-    message = soup.find("div", {"id": string}).find("p").text
-    # Clean up the message
-    message = clean(message)
-    rating = soup.find("div", {"id": string}).find("div", {"class": "content-grid-rating"})
-    rating = str(rating.attrs['class'][1])
-    rating = string_to_int(rating)
-    return rating, message
+    try:
+        soup = soup 
+        message = soup.find("div", {"id": string}).find("p").text
+        # Clean up the message
+        message = clean(message)
+        rating = soup.find("div", {"id": string}).find("div", {"class": "content-grid-rating"})
+        rating = str(rating.attrs['class'][1])
+        rating = string_to_int(rating)
+        return rating, message
+    except AttributeError:
+        return None, None
+
 
 
 def scrape_movie(url):
@@ -80,18 +87,13 @@ def scrape_movie(url):
         imdb = json.loads(imdb)
         imdb = imdb["itemReviewed"]["sameAs"]
         movie_data[movie_name]["imdb"] = imdb
-    except Exception as e:
-        imdb = None
-        print("Error in: {movie} for IMDb link {e}".format(movie=movie_name, e=e))
-
-    try:
         id = string_to_int(imdb)
         movie = ia.get_movie(id)
         movie_data[movie_name]["imdb_rating"] = movie.get("rating")
         movie_data[movie_name]["genres"] = movie.get("genres") 
         movie_data[movie_name]["genres"] = ",".join(movie_data[movie_name]["genres"])
         movie_data[movie_name]["year"] = movie.get("year")
-    except IMDbDataAccessError as e:
+    except Exception as e:
         movie_data[movie_name]["imdb_rating"] = None
         movie_data[movie_name]["genres"] = None
         movie_data[movie_name]["year"] = None
@@ -209,6 +211,15 @@ for index, row in movies.iterrows():
     print("Scrapping: {movie} ...".format(movie=movie_id))
     # Scrape and add to dictionary
     movie_data.update(scrape_movie(movie_id))
+
+
+# # Start from row 8656 and get information for each movie
+# for index, row in movies.iloc[8675:].iterrows():
+#     movie_id = row[1]
+#     print("Scrapping: {movie} ...".format(movie=movie_id))
+#     # Scrape and add to dictionary
+#     movie_data.update(scrape_movie(movie_id))
+#     print(index)
 
 # Dictionary to DataFrame
 df = pd.DataFrame.from_dict(movie_data, orient='index')
