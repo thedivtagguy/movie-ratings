@@ -42,4 +42,26 @@ age_difference('Horror')
 dput = df[['movie', 'url', 'genres']].head(5)
 
 # Count number of horror movies
-dput['genres'].str.contains('Horror').sum()
+dput['genres'] = dput['genres'].str.split(',')
+df['genres'] = df['genres'].str.split(',')
+df = df.explode('genres')
+
+# Count movies where  genre is horror
+count_horror = df[df['genres'].str.contains('Horror', na=False)].movie.count()
+
+# Daatframe to SQL database
+from sqlalchemy import create_engine
+engine = create_engine('sqlite://', echo=False)
+df.to_sql('movie_data', con=engine, if_exists='replace', index=False)
+
+# Choose random language_text from movie_data
+df2 = pd.read_sql_table('movie_data', con=engine)
+df2['language_text']
+
+# Select words from movie_data in language_text of the regex pattern [a-zA-Z]-*[a-zA-Z]
+query = """
+        SELECT * FROM language_text
+        WHERE language_text REGEXP '[a-zA-Z]-*[a-zA-Z]'
+        """
+df3 = pd.read_sql_query(query, con=engine)
+df3
